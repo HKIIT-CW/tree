@@ -182,7 +182,7 @@
             <!-- 頁籤內容 1：C++ 程式碼 -->
             <div id="panel-code" class="flex-1 flex flex-col overflow-hidden">
                 <div class="bg-slate-950 p-2 px-4 border-b border-slate-800/80 flex justify-between items-center shrink-0">
-                    <span class="text-xs font-semibold text-slate-400 tracking-wider uppercase">C++ 實作範例</span>
+                    <span class="text-xs font-semibold text-slate-400 tracking-wider uppercase">C++ 實作範例 (Tree.h)</span>
                     <span id="code-status-tag" class="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded text-[10px] font-bold">Node 定義</span>
                 </div>
                 <!-- 程式碼顯示區 -->
@@ -192,7 +192,7 @@
                 <!-- 底部提示 -->
                 <div class="p-3 bg-slate-950/80 border-t border-slate-800 text-xs text-slate-400 flex items-center gap-2">
                     <i class="fa-solid fa-lightbulb text-amber-400"></i>
-                    <span>程式碼會隨著您的操作（插入、旋轉、刪除）自動切換並高亮！</span>
+                    <span>程式碼已採用您所提供的 Tree.h 結構進行同步對照與高亮！</span>
                 </div>
             </div>
 
@@ -311,49 +311,57 @@
 
     <script>
         // ==========================================
-        // C++ 原始碼範本
+        // C++ 原始碼範本（已使用您的 Tree.h 客製化）
         // ==========================================
         const cppTemplates = {
-            node: `// --- C++ 節點結構定義 ---
-struct Node {
-    int data;
-    Node* left;
-    Node* right;
-    int height; // AVL 樹專用
+            node: `// --- C++ 節點與 BinarySearchTree 類別宣告 (Tree.h) ---
+template <class Type> struct treeNode {
+	Type data;
+	treeNode<Type> *left;
+	treeNode<Type> *right;
+};
 
-    Node(int val) {
-        data = val;
-        left = nullptr;
-        right = nullptr;
-        height = 1;
-    }
+template <class Type> class BinarySearchTree {
+	treeNode<Type> *root;
+    // ... 方法成員定義與實作 ...
 };`,
-            insertBST: `// --- BST 插入節點遞迴實作 ---
-Node* insertBST(Node* root, int val) {
-    if (root == nullptr) {
-        return new Node(val);
+            insertBST: `// --- C++ BST 迭代指針插入 (來自 Tree.h) ---
+template <class Type>  
+void BinarySearchTree<Type>::insert (const Type& item) {
+	treeNode<Type> *current, *previous, *newNode;
+	previous = NULL;
+	newNode = new treeNode<Type>;
+	newNode->data = item;
+	newNode->left = NULL;
+	newNode->right = NULL;
+	if (root == NULL) 
+		root = newNode; 
+	else { 
+		current = root;
+		while (current != NULL) { 
+			previous = current; 
+			if (current->data == item) return; // no duplicate
+			else if (current->data > item) current = current->left;
+			else current = current->right;
+		}//end while
+		if (previous->data > item) 
+			previous->left = newNode;
+		else previous->right = newNode;
+	}
+}//end insert`,
+            insertAVL: `// --- AVL 插入節點與平衡調節 (擴充自 treeNode 結構) ---
+template <class Type>
+treeNode<Type>* insertAVL(treeNode<Type>* node, int val) {
+    if (node == NULL) {
+        node = new treeNode<Type>{val, NULL, NULL};
+        return node;
     }
-    
-    if (val < root->data) {
-        root->left = insertBST(root->left, val);
-    } else if (val > root->data) {
-        root->right = insertBST(root->right, val);
-    }
-    
-    return root;
-}`,
-            insertAVL: `// --- AVL 插入節點與平衡調節 ---
-Node* insertAVL(Node* node, int val) {
-    if (node == nullptr) return new Node(val);
 
     if (val < node->data)
         node->left = insertAVL(node->left, val);
     else if (val > node->data)
         node->right = insertAVL(node->right, val);
     else return node;
-
-    node->height = 1 + max(getHeight(node->left), 
-                           getHeight(node->right));
 
     int balance = getBalance(node);
 
@@ -379,112 +387,124 @@ Node* insertAVL(Node* node, int val) {
 
     return node;
 }`,
-            leftRotate: `// --- 左旋操作 (Left Rotate) ---
-Node* leftRotate(Node* x) {
-    Node* y = x->right;
-    Node* T2 = y->left;
+            leftRotate: `// --- C++ 左旋操作 (指標交換) ---
+template <class Type>
+treeNode<Type>* leftRotate(treeNode<Type>* x) {
+    treeNode<Type>* y = x->right;
+    treeNode<Type>* T2 = y->left;
 
+    // 指標重導向
     y->left = x;
     x->right = T2;
 
-    x->height = max(getHeight(x->left), getHeight(x->right)) + 1;
-    y->height = max(getHeight(y->left), getHeight(y->right)) + 1;
-
-    return y;
+    return y; // 回傳新根節點
 }`,
-            rightRotate: `// --- 右旋操作 (Right Rotate) ---
-Node* rightRotate(Node* y) {
-    Node* x = y->left;
-    Node* T2 = x->right;
+            rightRotate: `// --- C++ 右旋操作 (指標交換) ---
+template <class Type>
+treeNode<Type>* rightRotate(treeNode<Type>* y) {
+    treeNode<Type>* x = y->left;
+    treeNode<Type>* T2 = x->right;
 
+    // 指標重導向
     x->right = y;
     y->left = T2;
 
-    y->height = max(getHeight(y->left), getHeight(y->right)) + 1;
-    x->height = max(getHeight(x->left), getHeight(x->right)) + 1;
-
-    return x;
+    return x; // 回傳新根節點
 }`,
-            deleteBST: `// --- BST 刪除節點遞迴實作 ---
-Node* deleteNodeBST(Node* root, int val) {
-    if (root == nullptr) return root;
+            deleteBST: `// --- C++ BST 刪除節點 (來自 Tree.h) ---
+template <class Type> 
+void BinarySearchTree<Type>::deleteNode(const Type& item){
+    treeNode<Type> *current, *previous; 
+    bool found = false;
+    if (root != NULL) {
+        current = root;
+        previous = root;
+        while (current != NULL && !found) {
+            if (current->data == item) found = true;
+            else {
+				previous = current;
+                if (current->data > item) current = current->left;
+                else current = current->right;
+            }
+        }//end while
+        if (current == NULL || !found) cout << "Item not found." << endl;
+        else {
+			if (current == root) deleteFromTree(root);
+            else if (previous->data > item) deleteFromTree(previous->left);
+            else deleteFromTree(previous->right);
+		}
+	}
+} //end deleteNode
 
-    if (val < root->data) {
-        root->left = deleteNodeBST(root->left, val);
-    } else if (val > root->data) {
-        root->right = deleteNodeBST(root->right, val);
-    } else {
-        // 情況 A：無子節點或只有一個子節點
-        if (root->left == nullptr) {
-            Node* temp = root->right;
-            delete root;
-            return temp;
-        } else if (root->right == nullptr) {
-            Node* temp = root->left;
-            delete root;
-            return temp;
-        }
-
-        // 情況 B：有兩個子節點
-        // 尋找右子樹中最小的節點 (In-order Successor)
-        Node* temp = findMin(root->right);
-        root->data = temp->data; // 複製替代值
-
-        // 遞迴將右子樹內已被複製的該最小節點刪除
-        root->right = deleteNodeBST(root->right, temp->data);
-    }
-    return root;
-}`,
-            deleteAVL: `// --- AVL 刪除節點與平衡修復 ---
-Node* deleteNodeAVL(Node* root, int val) {
-    if (root == nullptr) return root;
+template <class Type> 
+void BinarySearchTree<Type>::deleteFromTree (treeNode<Type>* &p) {
+    treeNode<Type> *current, *previous, *temp; 
+    if (p == NULL) return; 
+    if (p->left == NULL && p->right == NULL) { // leaf node
+        temp = p; p = NULL; delete temp;
+    } else if (p->left == NULL) { // right subtree only
+        temp = p; p = temp->right; delete temp;
+    } else if (p->right == NULL) { // left subtree only
+        temp = p; p = temp->left; delete temp;
+    } else { // both subtrees available
+        current = p->right;
+        previous = NULL;
+        while (current->left != NULL) {
+            previous = current;
+            current = current->left;
+        }//end while
+        p->data = current->data; // 替代數值
+        if (previous == NULL) p->right = current->right;
+        else previous->left = current->right;
+        delete current;
+    }//end else
+} //end deleteFromTree`,
+            deleteAVL: `// --- AVL 刪除與平衡維護 (擴充自 deleteFromTree 概念) ---
+template <class Type>
+treeNode<Type>* deleteNodeAVL(treeNode<Type>* root, int val) {
+    if (root == NULL) return root;
 
     if (val < root->data) {
         root->left = deleteNodeAVL(root->left, val);
     } else if (val > root->data) {
         root->right = deleteNodeAVL(root->right, val);
     } else {
-        // 標準 BST 刪除處理
-        if ((root->left == nullptr) || (root->right == nullptr)) {
-            Node* temp = root->left ? root->left : root->right;
-            if (temp == nullptr) {
+        // 標準 BST 刪除與釋放處理
+        if ((root->left == NULL) || (root->right == NULL)) {
+            treeNode<Type>* temp = root->left ? root->left : root->right;
+            if (temp == NULL) {
                 temp = root;
-                root = nullptr;
+                root = NULL;
             } else {
-                *root = *temp; // 複製子樹
+                *root = *temp; 
             }
             delete temp;
         } else {
-            Node* temp = findMin(root->right);
+            treeNode<Type>* temp = findMin(root->right);
             root->data = temp->data;
             root->right = deleteNodeAVL(root->right, temp->data);
         }
     }
 
-    if (root == nullptr) return root;
+    if (root == NULL) return root;
 
-    // 1. 更新當前高度
-    root->height = 1 + max(getHeight(root->left), 
-                           getHeight(root->right));
-
-    // 2. 檢測平衡因子
     int balance = getBalance(root);
 
-    // LL 情況 (單一右旋)
+    // LL 情況
     if (balance > 1 && getBalance(root->left) >= 0)
         return rightRotate(root);
 
-    // LR 情況 (左右雙旋)
+    // LR 情況
     if (balance > 1 && getBalance(root->left) < 0) {
         root->left = leftRotate(root->left);
         return rightRotate(root);
     }
 
-    // RR 情況 (單一左旋)
+    // RR 情況
     if (balance < -1 && getBalance(root->right) <= 0)
         return leftRotate(root);
 
-    // RL 情況 (右左雙旋)
+    // RL 情況
     if (balance < -1 && getBalance(root->right) > 0) {
         root->right = rightRotate(root->right);
         return leftRotate(root);
@@ -570,7 +590,7 @@ Node* deleteNodeAVL(Node* root, int val) {
         const statTraversal = document.getElementById('stat-traversal');
 
         // ==========================================
-        // 核心邏輯：AVL 樹計算方法 (與 C++ 完全對照)
+        // 核心邏輯：AVL 樹計算方法
         // ==========================================
         function getNodeHeight(node) {
             return node ? node.height : 0;
@@ -654,10 +674,10 @@ Node* deleteNodeAVL(Node* root, int val) {
             showToast("開始插入", `正在將節點 ${val} 插入到樹中...`, "info");
             
             if (treeMode === 'BST') {
-                updateCodeDisplay('insertBST', "插入 BST 節點");
+                updateCodeDisplay('insertBST', "insert() 迭代插入");
                 root = await insertBSTHelper(root, val, initialX, initialY);
             } else {
-                updateCodeDisplay('insertAVL', "插入 AVL 節點與平衡調整");
+                updateCodeDisplay('insertAVL', "insertAVL() 遞迴平衡插入");
                 root = await insertAVLHelper(root, val, initialX, initialY);
             }
 
@@ -729,14 +749,14 @@ Node* deleteNodeAVL(Node* root, int val) {
             // LL
             if (balance > 1 && val < curr.left.val) {
                 showToast("LL 情況 - 單一右旋", `對節點 ${curr.val} 進行右旋 (Right Rotate)`, "success");
-                updateCodeDisplay('rightRotate', "右旋操作");
+                updateCodeDisplay('rightRotate', "rightRotate() 右旋指標重導");
                 return await rotateRight(curr);
             }
 
             // RR
             if (balance < -1 && val > curr.right.val) {
                 showToast("RR 情況 - 單一左旋", `對節點 ${curr.val} 進行左旋 (Left Rotate)`, "success");
-                updateCodeDisplay('leftRotate', "左旋操作");
+                updateCodeDisplay('leftRotate', "leftRotate() 左旋指標重導");
                 return await rotateLeft(curr);
             }
 
@@ -766,7 +786,7 @@ Node* deleteNodeAVL(Node* root, int val) {
         }
 
         // ==========================================
-        // AVL / BST 節點刪除核心 (新增功能)
+        // AVL / BST 節點刪除核心
         // ==========================================
         async function deleteNode(val) {
             if (isNaN(val) || val < 1 || val > 99) {
@@ -780,13 +800,13 @@ Node* deleteNodeAVL(Node* root, int val) {
             }
 
             showToast("開始刪除", `正在搜尋並刪除節點 ${val}...`, "info");
-            selectedNode = null; // 取消當前選中
+            selectedNode = null; 
 
             if (treeMode === 'BST') {
-                updateCodeDisplay('deleteBST', "BST 刪除節點");
+                updateCodeDisplay('deleteBST', "deleteNode() 與 deleteFromTree()");
                 root = await deleteBSTHelper(root, val);
             } else {
-                updateCodeDisplay('deleteAVL', "AVL 刪除與平衡維護");
+                updateCodeDisplay('deleteAVL', "deleteNodeAVL() 刪除與平衡維護");
                 root = await deleteAVLHelper(root, val);
             }
 
@@ -794,11 +814,10 @@ Node* deleteNodeAVL(Node* root, int val) {
             updateTreeStats();
         }
 
-        // BST 刪除遞迴與視覺化
+        // BST 刪除遞迴與視覺化 (照著您 Tree.h 的 deleteFromTree 雙指針邏輯展示)
         async function deleteBSTHelper(curr, val) {
             if (!curr) return null;
 
-            // 標示搜尋軌跡
             const visualNode = document.getElementById(curr.id);
             if (visualNode) {
                 visualNode.classList.add('border-rose-400', 'bg-rose-950/40', 'scale-105');
@@ -811,33 +830,30 @@ Node* deleteNodeAVL(Node* root, int val) {
             } else if (val > curr.val) {
                 curr.right = await deleteBSTHelper(curr.right, val);
             } else {
-                // 找到刪除目標了！
-                showToast("定位成功", `已找到目標節點 ${val}。開始執行指針重組刪除...`, "success");
+                showToast("定位成功", `已找到目標節點 ${val}。執行 deleteFromTree 釋放指標...`, "success");
                 
-                // 情況一：無子節點或只有單子節點
+                // 情況一：無子節點或只有單子節點 (來自 Tree.h)
                 if (!curr.left) {
-                    showToast("刪除完成", `節點 ${val} 已被其右子節點替代（或直接刪除）`, "success");
+                    showToast("單右子樹/葉子情況", `將該節點改接為右子節點`, "success");
                     return curr.right;
                 } else if (!curr.right) {
-                    showToast("刪除完成", `節點 ${val} 已被其左子節點替代`, "success");
+                    showToast("單左子樹情況", `將該節點改接為左子節點`, "success");
                     return curr.left;
                 }
 
-                // 情況二：雙子節點 (尋找右子樹中的最小值作為替代)
-                showToast("雙子樹情況", `節點 ${val} 擁有兩個子節點，需尋找右子樹的最小值（In-order Successor）進行替代。`, "warning");
+                // 情況二：雙子節點 - 尋找右子樹中的最小值作為替代 (來自 Tree.h)
+                showToast("雙子樹情況", `節點 ${val} 具有左右子樹，尋找右子樹中最小的節點 (In-order Successor)。`, "warning");
                 let successor = findMinNode(curr.right);
                 
-                // 視覺標示替代節點
                 const succEl = document.getElementById(successor.id);
                 if (succEl) {
                     succEl.className = succEl.className.replace('border-indigo-500', 'border-amber-400 bg-amber-950 ring-4 ring-amber-400/50');
                     await delay(animationSpeed * 1.5);
                 }
 
-                showToast("複製替代數值", `將最小值 ${successor.val} 複製到 ${curr.val} 節點上，並遞迴刪除下方原替代節點`, "info");
+                showToast("資料替換與複製", `複製右子樹最小值 ${successor.val} 到當前節點，並釋放下方的替代節點。`, "info");
                 curr.val = successor.val;
                 
-                // 重繪以呈現數值改變
                 renderTree();
                 await delay(animationSpeed);
 
@@ -873,7 +889,6 @@ Node* deleteNodeAVL(Node* root, int val) {
                 showToast("雙子樹情況", `尋找右子樹中的最小值 (Successor) 進行複製替代`, "warning");
                 let successor = findMinNode(curr.right);
 
-                // 視覺標示
                 const succEl = document.getElementById(successor.id);
                 if (succEl) {
                     succEl.className = succEl.className.replace('border-indigo-500', 'border-amber-400 bg-amber-950 ring-4 ring-amber-400/50');
@@ -889,32 +904,30 @@ Node* deleteNodeAVL(Node* root, int val) {
 
             if (!curr) return null;
 
-            // 1. 更新高度
             updateNodeHeight(curr);
 
-            // 2. 檢測平衡因子
             let balance = getBalanceFactor(curr);
 
             if (Math.abs(balance) > 1) {
                 const nodeEl = document.getElementById(curr.id);
                 if (nodeEl) {
                     nodeEl.classList.add('border-rose-500', 'text-rose-400', 'animate-pulse');
-                    showToast("刪除後失衡", `刪除操作使節點 ${curr.val} 失衡！平衡因子：${balance}。準備自動旋轉重構。`, "warning");
+                    showToast("刪除後失衡", `刪除使節點 ${curr.val} 失衡！平衡因子：${balance}。執行旋轉調整。`, "warning");
                     await delay(animationSpeed * 1.5);
                     nodeEl.classList.remove('border-rose-500', 'text-rose-400', 'animate-pulse');
                 }
             }
 
-            // LL (單一右旋)
+            // LL
             if (balance > 1 && getBalanceFactor(curr.left) >= 0) {
                 showToast("LL 情況 - 右旋", `刪除後平衡因子為 ${balance}。對 ${curr.val} 進行右旋`, "success");
-                updateCodeDisplay('rightRotate', "右旋操作");
+                updateCodeDisplay('rightRotate', "rightRotate() 右旋");
                 return await rotateRight(curr);
             }
 
-            // LR (雙旋：先左旋後右旋)
+            // LR
             if (balance > 1 && getBalanceFactor(curr.left) < 0) {
-                showToast("LR 情況 - 左右雙旋", `刪除後對 ${curr.left.val} 左旋，再對 ${curr.val} 右旋`, "success");
+                showToast("LR 情況 - 左右雙旋", `刪除後對左子樹 ${curr.left.val} 左旋，再對根 ${curr.val} 右旋`, "success");
                 updateCodeDisplay('leftRotate', "左旋左子樹");
                 curr.left = await rotateLeft(curr.left);
                 recalculateTreeLayout();
@@ -923,16 +936,16 @@ Node* deleteNodeAVL(Node* root, int val) {
                 return await rotateRight(curr);
             }
 
-            // RR (單一左旋)
+            // RR
             if (balance < -1 && getBalanceFactor(curr.right) <= 0) {
                 showToast("RR 情況 - 左旋", `刪除後平衡因子為 ${balance}。對 ${curr.val} 進行左旋`, "success");
-                updateCodeDisplay('leftRotate', "左旋操作");
+                updateCodeDisplay('leftRotate', "leftRotate() 左旋");
                 return await rotateLeft(curr);
             }
 
-            // RL (雙旋：先右旋後左旋)
+            // RL
             if (balance < -1 && getBalanceFactor(curr.right) > 0) {
-                showToast("RL 情況 - 右左雙旋", `刪除後對 ${curr.right.val} 右旋，再對 ${curr.val} 左旋`, "success");
+                showToast("RL 情況 - 右左雙旋", `刪除後對右子樹 ${curr.right.val} 右旋，再對根 ${curr.val} 左旋`, "success");
                 updateCodeDisplay('rightRotate', "右旋右子樹");
                 curr.right = await rotateRight(curr.right);
                 recalculateTreeLayout();
@@ -988,7 +1001,7 @@ Node* deleteNodeAVL(Node* root, int val) {
         // ==========================================
         async function triggerManualRotate(dir) {
             if (!selectedNode) {
-                showToast("無選定節點", "請先點擊選取樹中的任一節點（金色邊框），再進行手動旋轉。", "warning");
+                showToast("無選定節點", "請先點擊選取樹中的任一節點（金色邊框），再進行手動旋轉演示。", "warning");
                 return;
             }
 
@@ -1001,14 +1014,14 @@ Node* deleteNodeAVL(Node* root, int val) {
                     showToast("無法旋轉", `節點 ${selectedNode.val} 沒有右子樹，無法左旋！`, "error");
                     return;
                 }
-                updateCodeDisplay('leftRotate', "手動左旋示範");
+                updateCodeDisplay('leftRotate', "手動左旋指標交換");
                 newSubtreeRoot = await rotateLeft(selectedNode);
             } else {
                 if (!selectedNode.left) {
                     showToast("無法旋轉", `節點 ${selectedNode.val} 沒有左子樹，無法右旋！`, "error");
                     return;
                 }
-                updateCodeDisplay('rightRotate', "手動右旋示範");
+                updateCodeDisplay('rightRotate', "手動右旋指標交換");
                 newSubtreeRoot = await rotateRight(selectedNode);
             }
 
@@ -1377,18 +1390,24 @@ Node* deleteNodeAVL(Node* root, int val) {
         }
 
         // ==========================================
-        // C++ 程式碼高亮與切換系統
+        // C++ 程式碼高亮與切換系統 (結合您的模板類型)
         // ==========================================
         function updateCodeDisplay(templateKey, actionLabel) {
             codeStatusTag.innerText = actionLabel;
             const code = cppTemplates[templateKey];
             
-            let highlighted = code
-                .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
-                .replace(/(#include|struct|class|int|void|nullptr|new|return|if|else|max|delete)/g, '<span class="text-indigo-400 font-semibold">$1</span>')
-                .replace(/(Node\*|Node)/g, '<span class="text-emerald-400">$1</span>')
-                .replace(/(\/\/.*)/g, '<span class="text-slate-500 italic">$1</span>')
-                .replace(/(leftRotate|rightRotate|insertBST|insertAVL|deleteNodeBST|deleteNodeAVL)/g, '<span class="text-amber-400">$1</span>');
+            // 安全逃逸 HTML 字元
+            let escaped = code
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;");
+
+            // 著色高亮正則
+            let highlighted = escaped
+                .replace(/\b(template|class|struct|typename|Type|int|void|new|delete|return|if|else|bool|const|NULL|nullptr|max)\b/g, '<span class="text-indigo-400 font-semibold">$1</span>')
+                .replace(/\b(treeNode|BinarySearchTree|Node)\b/g, '<span class="text-emerald-400">$1</span>')
+                .replace(/\b(insert|deleteNode|deleteFromTree|leftRotate|rightRotate|insertBST|insertAVL|deleteNodeBST|deleteNodeAVL)\b/g, '<span class="text-amber-400">$1</span>')
+                .replace(/(\/\/.*)/g, '<span class="text-slate-500 italic">$1</span>');
 
             cppCodeBlock.innerHTML = highlighted;
         }
@@ -1418,7 +1437,7 @@ Node* deleteNodeAVL(Node* root, int val) {
             treeMode = 'BST';
             btnBstMode.className = "px-4 py-1.5 rounded-md text-sm font-medium transition-all duration-200 bg-indigo-600 text-white shadow";
             btnAvlMode.className = "px-4 py-1.5 rounded-md text-sm font-medium transition-all duration-200 text-slate-400 hover:text-white";
-            updateCodeDisplay('insertBST', "BST 插入操作");
+            updateCodeDisplay('insertBST', "BST 迭代式插入");
             showToast("切換為 BST 模式", "在此模式下，插入與刪除節點不會觸發 AVL 自動平衡機制。您可以進行手動左旋、右旋演示。", "info");
             recalculateTreeLayout();
         });
@@ -1427,7 +1446,7 @@ Node* deleteNodeAVL(Node* root, int val) {
             treeMode = 'AVL';
             btnAvlMode.className = "px-4 py-1.5 rounded-md text-sm font-medium transition-all duration-200 bg-indigo-600 text-white shadow";
             btnBstMode.className = "px-4 py-1.5 rounded-md text-sm font-medium transition-all duration-200 text-slate-400 hover:text-white";
-            updateCodeDisplay('insertAVL', "AVL 插入與平衡");
+            updateCodeDisplay('insertAVL', "AVL 平衡插入");
             showToast("切換為 AVL 模式", "插入與刪除時，系統會自動追蹤平衡因子。若失去平衡，將自動展示經典的 LL/RR/LR/RL 旋轉。", "info");
             recalculateTreeLayout();
         });
@@ -1443,7 +1462,7 @@ Node* deleteNodeAVL(Node* root, int val) {
             }
         });
 
-        // 刪除節點 (新增數值刪除)
+        // 刪除節點
         btnDelete.addEventListener('click', () => {
             const val = parseInt(nodeInput.value);
             if (!isNaN(val)) {
@@ -1454,7 +1473,7 @@ Node* deleteNodeAVL(Node* root, int val) {
             }
         });
 
-        // 刪除選定節點 (新增選取刪除)
+        // 刪除選定節點
         btnDeleteSelected.addEventListener('click', () => {
             if (!selectedNode) {
                 showToast("無選定節點", "請先在畫布上點擊選取一個金黃色節點，然後再點擊此按鈕刪除它。", "warning");
@@ -1512,7 +1531,7 @@ Node* deleteNodeAVL(Node* root, int val) {
         });
 
         window.onload = async function() {
-            updateCodeDisplay('node', 'Node 結構定義');
+            updateCodeDisplay('node', 'treeNode 結構定義');
             
             const defaultNodes = [30, 20, 40, 10, 25];
             for (let val of defaultNodes) {
